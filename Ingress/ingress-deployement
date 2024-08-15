@@ -1,0 +1,81 @@
+1. Scenario Setup
+Services in the Cluster:
+Service 1: Handles traffic for app.test.com on port 8080.
+Service 2: Handles traffic for app.prod.com on port 8080.
+Objective: Expose both services to external clients using an ingress controller and a LoadBalancer.
+2. Deploying the Ingress Controller
+Ingress Controller Deployment:
+Deployment: The ingress controller is deployed as a set of pods within the cluster, typically managed by a Deployment.
+Cluster Service: The ingress controller pods are associated with a Kubernetes service, referred to as ingress-service, which facilitates internal communication.
+3. Creating the Ingress Object
+Ingress Object Definition:
+
+Purpose: The ingress object is responsible for defining the rules that direct traffic to the correct service based on the host.
+Rules Configuration:
+Rule 1: Traffic destined for app.test.com should be forwarded to Service 1 on port 8080.
+Rule 2: Traffic destined for app.prod.com should be forwarded to Service 2 on port 8080.
+Ingress Controller Behavior:
+
+Monitoring: The ingress controller continuously monitors the cluster for new or updated ingress objects.
+Rule Application:
+Upon detecting the ingress object, the ingress controller configures itself to apply the specified rules.
+Traffic matching app.test.com is redirected to Service 1 on port 8080.
+Traffic matching app.prod.com is redirected to Service 2 on port 8080.
+4. Exposing the Ingress Controller to External Traffic
+Ingress Controller Visibility:
+To allow external clients to reach the ingress controller, you need to expose it outside the cluster.
+5. Configuring a LoadBalancer Service
+LoadBalancer Service Definition:
+
+Purpose: The LoadBalancer service is created to expose the ingress controller (ingress-service) to the external network.
+Configuration:
+Port Configuration: The LoadBalancer service is configured to receive traffic on port 80 (standard HTTP port).
+Forwarding Rule: It forwards all incoming traffic on port 80 to the ingress-service inside the cluster.
+Cloud Provider Integration:
+
+Provisioning: When the LoadBalancer service is created, your cloud provider automatically provisions an external load balancer.
+Public IP Address: The external load balancer is assigned a public IP address, making it accessible from the internet.
+Traffic Forwarding: The load balancer forwards incoming traffic on port 80 to the ingress-service, which in turn routes the traffic according to the ingress rules.
+6. Traffic Flow Path
+Client 🡪 Cloud LoadBalancer 🡪 Ingress Controller (ingress-service) 🡪 Service 1 or Service 2 🡪 Pods
+Client: An external client sends a request to the public IP address of the cloud load balancer.
+Cloud LoadBalancer: Receives the request on port 80 and forwards it to the ingress-service.
+Ingress Controller: Matches the traffic against the ingress rules and directs it to the appropriate service (Service 1 or Service 2).
+Service: The selected service forwards the traffic to the appropriate pods for processing.
+This explanation outlines the process of configuring ingress and load balancing to expose services in a Kubernetes cluster. It emphasizes how the ingress controller, combined with a LoadBalancer service, manages and routes external traffic to internal services based on specified rules.
+
+
+
+Here’s a step-by-step explanation of the traffic flow from the load balancer to the pods:
+
+1. Traffic Reaches the Load Balancer
+Initial Contact:
+External clients send a request to the public IP address of the cloud load balancer, targeting port 80 (e.g., <LoadBalancer-IP>:80).
+Role of the Load Balancer:
+The load balancer is configured to receive traffic on port 80 and is responsible for forwarding this traffic to the internal ingress-service within the Kubernetes cluster.
+2. Traffic is Redirected to the Ingress Service
+Forwarding Traffic:
+The load balancer forwards the incoming traffic to the ingress-service that runs the ingress controller pods. This service acts as the entry point into the cluster’s network for external HTTP/HTTPS traffic.
+Ingress Controller Handling:
+Once the traffic reaches the ingress-service, it is handed off to the ingress controller pods.
+3. Ingress Controller Checks Traffic and Applies Rules
+Content Inspection:
+The ingress controller inspects the incoming traffic to determine the host and path specified in the request.
+Rule Matching:
+The controller checks the request against the predefined ingress rules to find a match.
+For instance:
+If the request is for app.test.com, it will match the rule directing traffic to Service 1.
+If the request is for app.prod.com, it will match the rule directing traffic to Service 2.
+4. Traffic is Forwarded to the Appropriate Service
+Routing Decision:
+Based on the matching rule, the ingress controller forwards the traffic to the appropriate Kubernetes service (either Service 1 or Service 2).
+The forwarding happens on the designated port, in this case, port 8080.
+5. Traffic Reaches the Pods
+Service Handling:
+The selected service (Service 1 or Service 2) receives the traffic from the ingress controller.
+The service then performs its usual function of load balancing the traffic across the available pods.
+Final Destination:
+The traffic is finally routed to the appropriate pod(s) behind the service, where it is processed.
+Summary of the Traffic Flow:
+Client 🡪 Load Balancer (<LoadBalancer-IP>:80) 🡪 Ingress Service 🡪 Ingress Controller (applies rules) 🡪 Service 1 or Service 2 🡪 Pods
+This process ensures that traffic is efficiently routed from an external client all the way to the specific pods inside your Kubernetes cluster, using the ingress controller and the load balancer together.
