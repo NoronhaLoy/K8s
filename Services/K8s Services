@@ -10,6 +10,7 @@ That's where Services come in. They provide an unchanging location for a group o
 
 Now that we understand one purpose of Kubernetes Services, let’s take a closer look at the different types of available Services.
 
+![alt text](NodePort.png)
 
 conclusion:
 Stable Communication Endpoint:

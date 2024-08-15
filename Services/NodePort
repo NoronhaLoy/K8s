@@ -11,6 +11,7 @@ No Load Balancing: NodePort Services do not perform load balancing across multip
 https://kodekloud.com/blog/content/images/size/w1000/2023/02/NodePort-Service.png
 
 
+
 Below, we have an example of a .yaml file describing a NodePort Service object:
 
 apiVersion: v1
