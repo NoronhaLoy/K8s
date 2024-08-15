@@ -3,10 +3,12 @@ Services in the Cluster:
 Service 1: Handles traffic for app.test.com on port 8080.
 Service 2: Handles traffic for app.prod.com on port 8080.
 Objective: Expose both services to external clients using an ingress controller and a LoadBalancer.
+
 2. Deploying the Ingress Controller
 Ingress Controller Deployment:
 Deployment: The ingress controller is deployed as a set of pods within the cluster, typically managed by a Deployment.
 Cluster Service: The ingress controller pods are associated with a Kubernetes service, referred to as ingress-service, which facilitates internal communication.
+
 3. Creating the Ingress Object
 Ingress Object Definition:
 
@@ -21,12 +23,14 @@ Rule Application:
 Upon detecting the ingress object, the ingress controller configures itself to apply the specified rules.
 Traffic matching app.test.com is redirected to Service 1 on port 8080.
 Traffic matching app.prod.com is redirected to Service 2 on port 8080.
+
 4. Exposing the Ingress Controller to External Traffic
 Ingress Controller Visibility:
 To allow external clients to reach the ingress controller, you need to expose it outside the cluster.
-5. Configuring a LoadBalancer Service
-LoadBalancer Service Definition:
 
+5. Configuring a LoadBalancer Service
+
+LoadBalancer Service Definition:
 Purpose: The LoadBalancer service is created to expose the ingress controller (ingress-service) to the external network.
 Configuration:
 Port Configuration: The LoadBalancer service is configured to receive traffic on port 80 (standard HTTP port).
@@ -36,6 +40,8 @@ Cloud Provider Integration:
 Provisioning: When the LoadBalancer service is created, your cloud provider automatically provisions an external load balancer.
 Public IP Address: The external load balancer is assigned a public IP address, making it accessible from the internet.
 Traffic Forwarding: The load balancer forwards incoming traffic on port 80 to the ingress-service, which in turn routes the traffic according to the ingress rules.
+
+
 6. Traffic Flow Path
 Client 🡪 Cloud LoadBalancer 🡪 Ingress Controller (ingress-service) 🡪 Service 1 or Service 2 🡪 Pods
 Client: An external client sends a request to the public IP address of the cloud load balancer.
