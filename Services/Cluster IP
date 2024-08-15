@@ -1,11 +1,20 @@
-ClusterIP Service
-ClusterIP Services are used for communication between Pods within the same Kubernetes cluster.
+ClusterIP Service Definition:
 
-The Service gets exposed on a static IP that's unique within the cluster. When you make a request to that IP, the Service takes care of redirecting traffic to one of the Pods it's associated with. And if there's more than one Pod, the Service will automatically balance the traffic, so no single Pod gets bogged down by too many requests.
+A ClusterIP Service is used for communication between Pods within the same Kubernetes cluster.
+The Service is exposed on a static IP that is unique within the cluster.
 
-Note that ClusterIP Services are meant for Pod-to-Pod communication only. They aren't accessible from outside the cluster.
+Traffic Routing and Load Balancing:
 
-![alt text](image.png) 
+When a request is made to the Service's IP, it redirects traffic to one of the associated Pods.
+If multiple Pods are associated, the Service automatically balances the traffic among them, preventing any single Pod from being overwhelmed.
+
+Internal Access Only:
+
+ClusterIP Services are intended for Pod-to-Pod communication within the cluster and are not accessible from outside the cluster.
+
+----------------------
+
+https://kodekloud.com/blog/content/images/size/w1000/2023/02/ClusterIP-Service.png
 
 In the image above, the green bar titled "back-end" represents a ClusterIP Service. It sits in front of all the Pods labeled "back-end" and redirects incoming traffic to one of them.
 
