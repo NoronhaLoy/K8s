@@ -1,0 +1,31 @@
+ClusterIP Service
+ClusterIP Services are used for communication between Pods within the same Kubernetes cluster.
+
+The Service gets exposed on a static IP that's unique within the cluster. When you make a request to that IP, the Service takes care of redirecting traffic to one of the Pods it's associated with. And if there's more than one Pod, the Service will automatically balance the traffic, so no single Pod gets bogged down by too many requests.
+
+Note that ClusterIP Services are meant for Pod-to-Pod communication only. They aren't accessible from outside the cluster.
+
+![alt text](image.png) 
+
+In the image above, the green bar titled "back-end" represents a ClusterIP Service. It sits in front of all the Pods labeled "back-end" and redirects incoming traffic to one of them.
+
+Here is an example of a .yaml file describing a ClusterIP Service object:
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: nginx-clusterip
+spec:
+ type: ClusterIP
+ selector:
+   run: app-nginx
+ ports:
+ - port: 80
+   protocol: TCP
+This YAML file defines a Kubernetes Service object of type ClusterIP. Below is an explanation of the important fields in the file:
+
+kind: Specifies the type of Kubernetes object that is being defined. Here we are defining a Service.
+name: Specifies the name of the Service, in this case, "nginx-clusterip".
+type: Specifies the type of Service, in this case, a ClusterIP Service.
+selector: Specifies a label selector that defines which Pods should be exposed by this Service. In this example, the Service will expose all Pods that have the label "run" with the value "app-nginx". It's a way of telling Kubernetes: "This Service should sit 'in front' of this collection of Pods. All incoming traffic to this Service should be redirected to one of these Pods."
+port: Specifies the network port that the Service should expose. In this example, the Service exposes port 80.
