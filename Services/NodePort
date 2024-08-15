@@ -1,0 +1,34 @@
+Purpose: NodePort Services expose your application to external clients, allowing traffic from outside the cluster to reach your application.
+
+Port Range: Kubernetes opens a port within the range of 30000 to 32767 on all worker nodes when you create a NodePort Service.
+
+Uniform Port Number: The same port number is used across all worker nodes for the NodePort Service.
+
+Traffic Redirection: Traffic that comes to a worker node's IP address on the specified port is redirected to a Pod associated with the NodePort Service.
+
+No Load Balancing: NodePort Services do not perform load balancing across multiple nodes. Traffic is directed to the node that the external client is connected to, potentially leading to uneven distribution of traffic.
+
+https://kodekloud.com/blog/content/images/size/w1000/2023/02/NodePort-Service.png
+
+
+Below, we have an example of a .yaml file describing a NodePort Service object:
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: nginx-nodeport
+spec:
+ type: NodePort
+ selector:
+   run: app-nginx
+ ports:
+ - nodePort: 30001
+   port: 80
+   targetPort: 80
+This YAML file defines a Kubernetes Service object of type "NodePort". The "selector" block instructs the NodePort Service to send incoming traffic to one of the Pods with this label. In this case, the "run: app-nginx" label.
+
+In the "ports" block, we have defined three ports:
+
+* nodePort: Tells Kubernetes which port to "open" to the outside world on all of the worker nodes. This makes them accept incoming connections, from outside the cluster, on the port we chose here, 30001.
+* port: Specifies the port that should be "open" to the cluster, internally. Incoming connections will be accepted on this port, only if they come from within the cluster. External connections won't be accepted on this port.
+* targetPort: The Service will forward incoming connections to one of the Pods it exposes. "targetPort" specifies on which port of the Pod to send traffic to. E.g., with this config, even if traffic comes to port 30001 on the node, it will be sent to port 80 of the Pod (the "targetPort").
