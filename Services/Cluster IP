@@ -14,7 +14,7 @@ ClusterIP Services are intended for Pod-to-Pod communication within the cluster 
 
 ----------------------
 
-https://kodekloud.com/blog/content/images/size/w1000/2023/02/ClusterIP-Service.png
+https://kodekloud.com/blog/content/images/size/w1000/2023/02/ClusterIP-Service.png 
 
 In the image above, the green bar titled "back-end" represents a ClusterIP Service. It sits in front of all the Pods labeled "back-end" and redirects incoming traffic to one of them.
 
