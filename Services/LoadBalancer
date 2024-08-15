@@ -30,7 +30,7 @@ Once the load balancer forwards the request to a node, it is then directed to th
 
 The load balancer helps distribute traffic evenly across multiple nodes, preventing any single node from becoming overloaded, which ensures efficient and reliable response handling.
 
-![alt text](image-1.png)
+![alt text](LoadBalancer.png)
 
 
 Below, we have an example of a .yaml file describing a LoadBalancer Service:
@@ -46,5 +46,5 @@ spec:
  ports:
  - port: 80
    targetPort: 80
-   
+
 This LoadBalancer Service will be named "nginx-load-balancer". The traffic it receives on port: 80 will be sent to one of the Pods labeled run: app-nginx, on targetPort: 80 of those Pods.
