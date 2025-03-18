@@ -66,15 +66,16 @@ spec:
               number: 80
 ```
 1. Ingress Manifest Example Overview
-API Version: apiVersion: networking.k8s.io/v1
+- API Version: apiVersion: networking.k8s.io/v1
 This specifies the API version used for the ingress object, ensuring compatibility with Kubernetes.
-Kind: kind: Ingress
+- Kind: kind: Ingress
 Defines the type of Kubernetes object, in this case, an ingress resource.
-Metadata:
-Name: name: ingress-wildcard-host
-Specifies the name of the ingress resource for identification within the cluster.
+- Metadata:
+- Name: name: ingress-wildcard-host
+- Specifies the name of the ingress resource for identification within the cluster.
 
 2. Ingress Rules Configuration
+```
 Rules Section:
 
 Hosts: The ingress manifest defines different rules for specific hosts.
@@ -82,6 +83,7 @@ Host 1: host: "foo.bar.com"
 Traffic destined for this host will be routed according to the paths defined under it.
 Host 2: host: "*.foo.com"
 A wildcard is used to match any subdomain under foo.com, providing flexibility in routing.
+
 Paths:
 
 Path Type: pathType: Prefix
@@ -102,6 +104,7 @@ Service: name: service2
 Port: number: 80
 Traffic matching *.foo.com/foo is forwarded to the service2 on port 80.
 ----------
+```
 
 3. How Traffic Is Routed
 Traffic Flow:
