@@ -1,4 +1,4 @@
-Purpose of LoadBalancer Service:
+### Purpose of LoadBalancer Service:
 - The LoadBalancer Service in Kubernetes is used to expose your application to external clients, allowing them to access it over the internet.
 
 ### Cloud Platform Dependency:
