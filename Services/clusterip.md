@@ -1,15 +1,15 @@
-ClusterIP Service Definition:
+# ClusterIP Service Definition:
 
-A ClusterIP Service is used for communication between Pods within the same Kubernetes cluster.
-The Service is exposed on a static IP that is unique within the cluster.
+- A ClusterIP Service is used for communication between Pods within the same Kubernetes cluster.
+- The Service is exposed on a static IP that is unique within the cluster.
 
-Traffic Routing and Load Balancing:
+## Traffic Routing and Load Balancing:
+- When a request is made to the Service's IP,
+- it redirects traffic to one of the associated Pods.
+- If multiple Pods are associated, the Service automatically balances the traffic among them,
+- preventing any single Pod from being overwhelmed.
 
-When a request is made to the Service's IP, it redirects traffic to one of the associated Pods.
-If multiple Pods are associated, the Service automatically balances the traffic among them, preventing any single Pod from being overwhelmed.
-
-Internal Access Only:
-
+## Internal Access Only:
 ClusterIP Services are intended for Pod-to-Pod communication within the cluster and are not accessible from outside the cluster.
 
 ----------------------
@@ -18,10 +18,11 @@ https://kodekloud.com/blog/content/images/size/w1000/2023/02/ClusterIP-Service.p
 
 ![alt text](ClusterIP.png)
 
-In the image above, the green bar titled "back-end" represents a ClusterIP Service. It sits in front of all the Pods labeled "back-end" and redirects incoming traffic to one of them.
+> In the image above, the green bar titled "back-end" represents a ClusterIP Service. 
+> It sits in front of all the Pods labeled "back-end" and redirects incoming traffic to one of them.
 
 Here is an example of a .yaml file describing a ClusterIP Service object:
-
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -33,6 +34,7 @@ spec:
  ports:
  - port: 80
    protocol: TCP
+```
 This YAML file defines a Kubernetes Service object of type ClusterIP. Below is an explanation of the important fields in the file:
 
 kind: Specifies the type of Kubernetes object that is being defined. Here we are defining a Service.
