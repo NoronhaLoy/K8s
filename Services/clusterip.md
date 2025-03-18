@@ -37,8 +37,15 @@ spec:
 ```
 This YAML file defines a Kubernetes Service object of type ClusterIP. Below is an explanation of the important fields in the file:
 
-kind: Specifies the type of Kubernetes object that is being defined. Here we are defining a Service.
-name: Specifies the name of the Service, in this case, "nginx-clusterip".
-type: Specifies the type of Service, in this case, a ClusterIP Service.
-selector: Specifies a label selector that defines which Pods should be exposed by this Service. In this example, the Service will expose all Pods that have the label "run" with the value "app-nginx". It's a way of telling Kubernetes: "This Service should sit 'in front' of this collection of Pods. All incoming traffic to this Service should be redirected to one of these Pods."
-port: Specifies the network port that the Service should expose. In this example, the Service exposes port 80.
+> kind: Specifies the type of Kubernetes object that is being defined. Here we are defining a Service.
+> 
+> name: Specifies the name of the Service, in this case, "nginx-clusterip".
+> 
+> type: Specifies the type of Service, in this case, a ClusterIP Service.
+> 
+> selector: Specifies a label selector that defines which Pods should be exposed by this Service. 
+
+- In this example, the Service will expose all Pods that have the label "run" with the value "app-nginx". 
+- It's a way of telling Kubernetes: "This Service should sit 'in front' of this collection of Pods. 
+- All incoming traffic to this Service should be redirected to one of these Pods."
+- port: Specifies the network port that the Service should expose. In this example, the Service exposes port 80.
