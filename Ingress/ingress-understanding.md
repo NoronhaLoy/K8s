@@ -107,6 +107,7 @@ Traffic matching *.foo.com/foo is forwarded to the service2 on port 80.
 ```
 
 3. How Traffic Is Routed
+```
 Traffic Flow:
 
 When a request with the host foo.bar.com and path /bar hits the ingress controller, it is routed to service1 on port 80.
@@ -115,22 +116,28 @@ Flexibility in Ingress Rules:
 
 Content-Based Routing: Ingress rules provide the flexibility to route traffic based on the content of the HTTP headers, not just the IP and port.
 Advanced Load Balancing: You can create advanced load-balancing rules, enabling smarter and more precise traffic management within your cluster.
+```
 -----------------
 
 4. Ingress Controller Exposure
-
+```
 Challenge:
 Ingress controllers are typically deployed inside the cluster, so external traffic needs a way to reach them.
 Solution: LoadBalancer Service:
 Role: A LoadBalancer service is used to expose the ingress controller to the outside world.
 Single IP for Multiple Services: The LoadBalancer service provides a single external-facing IP that directs incoming traffic to the ingress controller.
 Routing Mechanism: The ingress controller then decides, based on the defined rules, how to route the traffic to the appropriate backend services within the cluster.
+```
 -----------------
 
 5. Traffic Flow Path
+```
 Client 🡪 LoadBalancer 🡪 Ingress Controller 🡪 Other Services 🡪 Pods
 Client: Sends a request to the external IP provided by the LoadBalancer service.
 LoadBalancer: Receives the traffic and forwards it to the ingress controller inside the cluster.
 Ingress Controller: Applies the ingress rules to determine which service should handle the traffic.
 Service: The selected service forwards the traffic to the appropriate pod(s) for processing.
-This breakdown explains the key components of the ingress manifest, how the ingress controller manages traffic, and the role of a LoadBalancer service in exposing the ingress controller to the outside world. It emphasizes the flexibility and advanced routing capabilities that ingress rules provide within a Kubernetes environment.
+         This breakdown explains the key components of the ingress manifest, how the ingress controller manages traffic,
+         and the role of a LoadBalancer service in exposing the ingress controller to the outside world.
+         It emphasizes the flexibility and advanced routing capabilities that ingress rules provide within a Kubernetes environment.
+```
