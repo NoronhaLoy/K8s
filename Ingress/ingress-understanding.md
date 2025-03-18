@@ -1,39 +1,39 @@
 1. Understanding Ingress Components
 
 Ingress Controller:
-- Role: The ingress controller is the engine that executes the ingress rules by translating them and routing the traffic accordingly.
-- Analogy: It functions similarly to a load balancer with forwarding rules, but it requires the ingress object to define those rules.
-- Deployment: Typically deployed as a pod within the cluster, often through a Deployment or DaemonSet.
-- Popular Implementations: Nginx and HAProxy are the most commonly used ingress controllers.
+- _**Role**_: The ingress controller is the engine that executes the ingress rules by translating them and routing the traffic accordingly.
+- _**Analogy**_: It functions similarly to a load balancer with forwarding rules, but it requires the ingress object to define those rules.
+- _**Deployment**_: Typically deployed as a pod within the cluster, often through a Deployment or DaemonSet.
+- _**Popular Implementations**_: Nginx and HAProxy are the most commonly used ingress controllers.
 
 
 Ingress Resource/Object:
-- Role: The ingress resource is the Kubernetes object that defines the routing rules for the ingress controller.
-- Interaction: The ingress resource communicates with the ingress controller, instructing it on how to route incoming traffic.
+- _**Role**_: The ingress resource is the Kubernetes object that defines the routing rules for the ingress controller.
+- _**Interaction**_: The ingress resource communicates with the ingress controller, instructing it on how to route incoming traffic.
 
 ---------------------
 2. How Ingress Works in Kubernetes
 Step 1: Deploy the Ingress Controller:
 
-- **Installation**: The first step is to install the ingress controller within the cluster. This is done by deploying it as a pod using a Deployment or DaemonSet object.
-- **Inside-Cluster Deployment**: The ingress controller is usually deployed inside the cluster, making it easier to manage and configure.
+- _**Installation**_: The first step is to install the ingress controller within the cluster. This is done by deploying it as a pod using a Deployment or DaemonSet object.
+- _**Inside-Cluster Deployment**_: The ingress controller is usually deployed inside the cluster, making it easier to manage and configure.
 Outside-Cluster Deployment (Optional):
-- **Advanced Setup**: Some ingress controllers can be deployed outside the cluster, but this requires additional setup, such as configuring routing through BGP and BIRD.
-- **Use Case**: This option is typically used for complex networking environments but is less common for standard deployments.
+- _**Advanced Setup**_: Some ingress controllers can be deployed outside the cluster, but this requires additional setup, such as configuring routing through BGP and BIRD.
+- _**Use Case**_: This option is typically used for complex networking environments but is less common for standard deployments.
 
 Step 2: Create the Ingress Resource:
 
-- **Configuration**: After the controller is up and running, the next step is to create the ingress resource.
+- _**Configuration**_: After the controller is up and running, the next step is to create the ingress resource.
   - This resource defines the rules that will be applied to incoming traffic.
-- **Manifest File**: The ingress resource is defined using a Kubernetes manifest file, similar to other Kubernetes objects.
-- **Updating the Controller**: Once created, the ingress resource updates the ingress controller with the rules,
+- _**Manifest File**_: The ingress resource is defined using a Kubernetes manifest file, similar to other Kubernetes objects.
+- _**Updating the Controller**_: Once created, the ingress resource updates the ingress controller with the rules,
   -  enabling it to route traffic according to the specified paths, hosts, and other criteria.
 
 ---------------------
 3. Practical Example:
-- **Nginx Ingress Controller**: The traditional example of deploying an ingress controller is the Nginx ingress controller.
+- _**Nginx Ingress Controller**_: The traditional example of deploying an ingress controller is the Nginx ingress controller.
   - It is widely used and well-documented, making it a common choice for Kubernetes clusters.
-- **Manifest File Example**: The ingress resource is typically configured in a YAML manifest file,
+- _**Manifest File Example**_: The ingress resource is typically configured in a YAML manifest file,
   - where you can define host-based or path-based routing rules, SSL settings, and more.
 
 
