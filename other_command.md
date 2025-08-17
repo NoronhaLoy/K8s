@@ -347,6 +347,32 @@ Admission controllers for mutating/validating requests. Advanced use case, typic
 
 ---
 
+# 🔍 Debugging & Troubleshooting Commands
+
+| Command | Example | Description |
+|---------|---------|-------------|
+| Check pod status | `kubectl get pods -o wide` | Show pod state, node, IP |
+| Describe pod | `kubectl describe pod <pod>` | Show events, scheduling, and errors |
+| Get logs | `kubectl logs <pod>` | Check logs of a single-container pod |
+| Logs for container | `kubectl logs <pod> -c <container>` | Get logs for specific container in multi-container pod |
+| Stream logs | `kubectl logs -f <pod>` | Follow logs in real-time |
+| Previous container logs | `kubectl logs <pod> -c <container> --previous` | Fetch logs from crashed container |
+| Exec into pod | `kubectl exec -it <pod> -- /bin/sh` | Troubleshoot inside pod shell |
+| Run one-off command | `kubectl exec <pod> -- ls /var/log` | Run diagnostic command inside container |
+| Start debug pod | `kubectl run tmp --rm -it --image=busybox -- /bin/sh` | Launch temporary pod for debugging |
+| Debug node | `kubectl debug node/<node> -it --image=busybox` | Start ephemeral debug container on a node (K8s v1.20+) |
+| Debug pod with new container | `kubectl debug <pod> -it --image=busybox` | Attach debug container to a running pod |
+| Port-forward to pod | `kubectl port-forward <pod> 8080:80` | Access container service locally |
+| Copy file from pod | `kubectl cp <pod>:/var/log/app.log ./app.log` | Download logs/files from pod |
+| Copy file to pod | `kubectl cp ./config.yaml <pod>:/etc/config.yaml` | Upload config/file into pod |
+| Get events | `kubectl get events --sort-by=.metadata.creationTimestamp` | Show recent cluster events |
+| Explain resource | `kubectl explain pod.spec.containers` | View documentation for resource fields |
+| Check node status | `kubectl get nodes -o wide` | See schedulable/unschedulable nodes |
+| Check resource usage | `kubectl top pod` / `kubectl top node` | CPU and memory usage |
+| Force delete pod | `kubectl delete pod <pod> --grace-period=0 --force` | Remove stuck pods |
+| Restart deployment | `kubectl rollout restart deployment <deploy>` | Restart workloads if pods are hung |
+| Check rollout status | `kubectl rollout status deployment <deploy>` | Debug upgrade failures |
+| Rollback deployment | `kubectl rollout undo deployment <deploy>` | Rollback faulty deployment |
 
 
 
