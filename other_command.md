@@ -291,4 +291,63 @@ Admission controllers for mutating/validating requests. Advanced use case, typic
 ---
 
 
+# CKA Remaining Imperative Commands
+
+## 🖥️ Node Management
+| Command | Example | Description |
+|---------|---------|-------------|
+| Get all nodes | `kubectl get nodes` | List all cluster nodes |
+| Get detailed node info | `kubectl describe node <node>` | Show full details of a node |
+| Drain a node | `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data` | Safely evict workloads before maintenance |
+| Cordon a node | `kubectl cordon <node>` | Mark node unschedulable |
+| Uncordon a node | `kubectl uncordon <node>` | Mark node schedulable again |
+| Delete a node | `kubectl delete node <node>` | Remove node from cluster (e.g., failed node) |
+
+---
+
+## 🔍 Debugging & Observability
+| Command | Example | Description |
+|---------|---------|-------------|
+| Get pod logs | `kubectl logs <pod>` | Fetch pod logs |
+| Get logs for specific container | `kubectl logs <pod> -c <container>` | Logs from a container in a multi-container pod |
+| Stream logs | `kubectl logs -f <pod>` | Follow logs in real time |
+| Exec into pod | `kubectl exec -it <pod> -- /bin/sh` | Open shell inside pod |
+| Run command in pod | `kubectl exec <pod> -- ls /` | Execute a command inside pod |
+| Describe resource | `kubectl describe pod <pod>` | Detailed resource info |
+| Get events | `kubectl get events --sort-by=.metadata.creationTimestamp` | Show cluster events in order |
+| Resource usage | `kubectl top pod` | Show CPU/memory usage for pods |
+| Node usage | `kubectl top node` | Show CPU/memory usage for nodes |
+| Explain resource | `kubectl explain pod.spec.containers` | View API documentation for resource fields |
+
+---
+
+## 📜 Resource Discovery & YAML Generation
+| Command | Example | Description |
+|---------|---------|-------------|
+| Dry-run create pod YAML | `kubectl run nginx --image=nginx --dry-run=client -o yaml > pod.yaml` | Generate YAML for editing |
+| Dry-run create deployment YAML | `kubectl create deployment myapp --image=nginx --dry-run=client -o yaml > dep.yaml` | Export deployment YAML |
+| Get resource in YAML | `kubectl get pod <pod> -o yaml` | Export running resource definition |
+| Get resource in JSON | `kubectl get pod <pod> -o json` | Export resource in JSON |
+| View API resources | `kubectl api-resources` | List all API resource kinds |
+| View API versions | `kubectl api-versions` | Show available API versions |
+
+---
+
+## 🛠️ Cluster Maintenance
+| Command | Example | Description |
+|---------|---------|-------------|
+| Create namespace | `kubectl create namespace dev` | New namespace |
+| Delete namespace | `kubectl delete namespace dev` | Remove namespace and all resources inside |
+| Create resource quota | `kubectl create quota my-quota --hard=cpu=2,memory=1Gi,pods=4` | Limit resource usage |
+| Create limit range | `kubectl create limitrange mem-limit --namespace=dev --limits=memory=512Mi,default=256Mi` | Set resource limits for namespace |
+| Apply config file | `kubectl apply -f resource.yaml` | Create/update resource from file |
+| Replace resource | `kubectl replace -f resource.yaml` | Replace resource from file |
+| Edit resource | `kubectl edit deployment myapp` | Edit resource live |
+| Delete resource | `kubectl delete pod <pod>` | Remove resource |
+
+---
+
+
+
+
 
