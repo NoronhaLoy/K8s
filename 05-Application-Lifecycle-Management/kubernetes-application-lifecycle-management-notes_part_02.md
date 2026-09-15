@@ -1,699 +1,725 @@
-# Application Lifecycle Management — Complete Notes (Part 1 of 2)
+# Application Lifecycle Management — Complete Notes (Part 2 of 2)
 
-> **Part 1 of 2** — covers Sections 01–09 (Section Introduction, Rolling Updates &
-> Rollback + Practice Test, Commands & Arguments in Docker/Kubernetes + Practice Test,
-> Environment Variables, ConfigMaps + Practice Test).
-> Next: [kubernetes-application-lifecycle-management-notes_part_02.md](kubernetes-application-lifecycle-management-notes_part_02.md)
-> (Sections 10–18 + Quick Revision Checklist).
+> **Part 2 of 2** — covers Sections 10–18 (Secrets + Practice Test, Multi-Container Pods
+> + Practice Test, Multi-Container Pod Design Patterns, Init Containers + Practice Test,
+> Self-Healing Applications, Presentation Deck) plus the Quick Revision Checklist.
+> Previous: [kubernetes-application-lifecycle-management-notes_part_01.md](kubernetes-application-lifecycle-management-notes_part_01.md)
+> (Sections 01–09).
 >
 > Source: `~/tf/ep-data/certified-kubernetes-administrator-course/docs/05-Application-Lifecycle-Management/`
 
 ---
 
-## 01. Application Lifecycle Management — Section Introduction
-
-- Video reference: *Application Lifecycle Management Section Introduction* (KodeKloud).
-- This section of the CKA course covers four themes, all built on top of Deployments:
-  - **Rolling Updates and Rollbacks** in Deployments
-  - **Configure Applications** (commands/args, env vars, ConfigMaps, Secrets)
-  - **Scale Applications**
-  - **Self-Healing Application** (ReplicaSets/Replication Controllers)
-- Big picture: this section is about what happens to an application *after* it's initially
-  deployed — how you update it safely, configure it, and keep it running automatically.
-
----
-
-## 02. Rolling Updates and Rollback
-
-### Rollout and Versioning in a Deployment
-
-- Every time the contents of a Deployment (e.g. the container image) are updated, a new
-  **rollout** is triggered, and this rollout creates a new **Deployment Revision** —
-  revisions are named `revision 1`, `revision 2`, etc.
-- **Inferred context (image `rollv.PNG`):** the diagram most likely shows that a Deployment
-  does not manage Pods directly — it manages a **ReplicaSet**. On each rollout, Kubernetes
-  creates a **brand-new ReplicaSet** (rather than mutating the existing Pods in place) and
-  scales it up while scaling the old ReplicaSet down to zero. Kubernetes keeps the old
-  ReplicaSet objects around (scaled to 0) so that revision history is available for
-  rollback — this is exactly what `kubectl rollout history` reads back later.
-
-### Rollout commands
-
-- See the live status of an in-progress rollout:
-  ```
-  $ kubectl rollout status deployment/myapp-deployment
-  ```
-- See revision history:
-  ```
-  $ kubectl rollout history deployment/myapp-deployment
-  ```
-- **Inferred context (image `rollc.PNG`):** likely shows sample output for both commands —
-  `rollout status` printing progressive lines such as *"Waiting for deployment
-  ... rollout to finish: 2 of 3 new replicas have been updated..."* ending in
-  *"deployment ... successfully rolled out"*; and `rollout history` printing a table with
-  columns `REVISION` and `CHANGE-CAUSE` listing each past update.
-
-### Deployment Strategies
-
-- There are **2 types of deployment strategies**:
-  1. **Recreate**
-  2. **RollingUpdate** (the **Default Strategy**)
-- **Inferred context (image `dst.PNG`):** the diagram most likely contrasts the two
-  strategies visually:
-  - **Recreate** — all existing (old-version) Pods are **destroyed first**, then all new
-    Pods are created. This causes application **downtime** in the gap between destroying
-    the old set and the new set becoming available.
-  - **RollingUpdate** — old Pods are taken down and new Pods are brought up **one/few at a
-    time** (a mix of old and new Pods coexist temporarily). The application stays
-    accessible throughout the update — **no downtime**, which is why it's the default.
-
-### `kubectl apply` — updating a Deployment declaratively
-
-- To update a Deployment: edit the deployment definition file with the necessary changes,
-  save it, then run:
-  ```yaml
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-   name: myapp-deployment
-   labels:
-    app: nginx
-  spec:
-   template:
-     metadata:
-       name: myap-pod
-       labels:
-         app: myapp
-         type: front-end
-     spec:
-      containers:
-      - name: nginx-container
-        image: nginx:1.7.1
-   replicas: 3
-   selector:
-    matchLabels:
-      type: front-end
-  ```
-  ```
-  $ kubectl apply -f deployment-definition.yaml
-  ```
-- Alternate way to update a deployment (e.g. bump just the image tag) without editing the
-  YAML file:
-  ```
-  $ kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
-  ```
-  - **Inferred context (image `ka.PNG`):** likely illustrates that `kubectl set image` is
-    a quick imperative shortcut that produces the *same effect* as editing the YAML's
-    `image:` field and re-applying — it triggers a new rollout/revision immediately,
-    without needing to touch a manifest file on disk.
-
-### Recreate vs RollingUpdate
-
-- **Inferred context (image `rcrl.PNG`):** likely a side-by-side timeline:
-  - **Recreate timeline:** `[v1 pod][v1 pod][v1 pod]` → all terminated → **gap (app down)**
-    → `[v2 pod][v2 pod][v2 pod]` all created together.
-  - **RollingUpdate timeline:** `[v1][v1][v1]` → `[v2][v1][v1]` → `[v2][v2][v1]` →
-    `[v2][v2][v2]`, with at least one Pod always serving traffic — no gap, no downtime.
-
-### Upgrades
-
-- **Inferred context (image `up.PNG`):** likely shows what physically happens on an
-  upgrade at the ReplicaSet level: the **old ReplicaSet is scaled down** to `0` replicas
-  while a **new ReplicaSet is scaled up** to the desired replica count, one/few Pods at a
-  time (for RollingUpdate) — this is the mechanism underlying both `kubectl apply` and
-  `kubectl set image`.
-
-### Rollback
-
-- **Inferred context (image `rb.PNG`):** likely shows the reverse of the "Upgrades"
-  diagram — on rollback, the **new ReplicaSet is scaled back down to 0** and the
-  **previous ReplicaSet is scaled back up**, restoring the Pods that existed under the
-  prior revision.
-- To undo a change (roll back to the previous revision):
-  ```
-  $ kubectl rollout undo deployment/myapp-deployment
-  ```
-
-### `kubectl create`
-
-- To create a deployment imperatively:
-  ```
-  $ kubectl create deployment nginx --image=nginx
-  ```
-
-### Summarize kubectl commands
-
-```
-$ kubectl create -f deployment-definition.yaml
-$ kubectl get deployments
-$ kubectl apply -f deployment-definition.yaml
-$ kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
-$ kubectl rollout status deployment/myapp-deployment
-$ kubectl rollout history deployment/myapp-deployment
-$ kubectl rollout undo deployment/myapp-deployment
-```
-
-- **Inferred context (image `sum.PNG`):** likely a one-slide visual cheat-sheet
-  reproducing the exact command list above as a quick-reference summary graphic.
-
-### K8s Reference Docs
-
-- https://kubernetes.io/docs/concepts/workloads/controllers/deployment
-- https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment
-
----
-
-## 03. Practice Test — Rolling Updates and Rollback
-
-Step-by-step lab-guide walkthrough:
-
-1. **"We have deployed a simple web application. Inspect the PODs and the Services."**
-   ```bash
-   kubectl get pods
-   kubectl get services
-   ```
-   - Confirms the app and its exposing Service exist and are `Running`/have an endpoint.
-
-2. **"What is the current color of the web application?"**
-   - Access the web application through its exposed Service/portal in the browser (or via
-     the provided UI tab) and visually read the color shown on the page.
-
-3. **"Execute the script at `/root/curl-test.sh`."**
-   ```bash
-   /root/curl-test.sh
-   ```
-   - This script typically curls the Service endpoint repeatedly to sample which
-     color/version is currently answering requests — useful later to *prove* whether a
-     rolling update caused a mix of old/new responses or a clean cut-over.
-
-4. **"Run `kubectl describe deployment` and look at 'Desired Replicas'."**
-   ```bash
-   kubectl describe deployment
-   ```
-   - Read the `Replicas:` line (format similar to `Replicas: 3 desired | 3 updated | 3
-     total | 3 available | 0 unavailable`) — the **desired** count is the answer.
-
-5. **"Run `kubectl describe deployment` and look for 'Images'."**
-   ```bash
-   kubectl describe deployment
-   ```
-   - Read the `Pod Template > Containers > Image:` field to identify the exact image/tag
-     currently in use.
-
-6. **"Run `kubectl describe deployment` and look at 'StrategyType'."**
-   ```bash
-   kubectl describe deployment
-   ```
-   - Read the `StrategyType:` field — will read `RollingUpdate` (default) or `Recreate`.
-
-7. **"If you were to upgrade the application now what would happen?"**
-   - **Answer:** *PODs are upgraded few at a time* — because the deployment's strategy is
-     `RollingUpdate`, Kubernetes replaces old Pods with new ones incrementally rather than
-     all at once, keeping the app available during the upgrade.
-
-8. **"Run `kubectl edit deployment frontend` and modify the required field."**
-   ```bash
-   kubectl edit deployment frontend
-   ```
-   - Opens the live Deployment object in an editor (typically to change the container
-     `image:` tag) — saving triggers an immediate new rollout.
-
-9. **"Execute the script at `/root/curl-test.sh`."**
-   ```bash
-   /root/curl-test.sh
-   ```
-   - Re-run the same probe script to observe the update in progress/completed (e.g. now
-     returning the new color).
-
-10. **"Look at the Max Unavailable value under RollingUpdateStrategy in deployment
-    details."**
-    ```bash
-    kubectl describe deployment
-    ```
-    - Read the `RollingUpdateStrategy:` line, e.g. `25% max unavailable, 25% max surge` —
-      report the `maxUnavailable` value shown.
-
-11. **"Run `kubectl edit deployment frontend` and modify the required field. Make sure to
-    delete the properties of rollingUpdate as well, set at `strategy.rollingUpdate`."**
-    ```bash
-    kubectl edit deployment frontend
-    ```
-    - This is the **Recreate** conversion step: change `strategy.type` to `Recreate`, and
-      because `rollingUpdate.maxUnavailable`/`rollingUpdate.maxSurge` are only valid under
-      the `RollingUpdate` strategy, they must be **deleted** — leaving them in place while
-      `strategy.type: Recreate` is set is invalid/ignored and is a common exam trap.
-
-12. **"Run `kubectl edit deployment frontend` and modify the required field."**
-    ```bash
-    kubectl edit deployment frontend
-    ```
-    - A further edit (e.g. bump the image again) — this time under the `Recreate`
-      strategy, so all old Pods terminate before any new Pods are created.
-
-13. **"Execute the script at `/root/curl-test.sh`."**
-    ```bash
-    /root/curl-test.sh
-    ```
-    - Running the probe again during this update should show a **gap/downtime window**
-      where the app is briefly unreachable — proving the practical difference between
-      `Recreate` and `RollingUpdate` observed earlier.
-
-**Exam-relevant takeaway:** `kubectl describe deployment` is the single command that
-answers almost every question in this lab — desired replicas, image, strategy type, and
-`maxUnavailable`/`maxSurge` all live in its output. Editing `strategy.type` between
-`Recreate` and `RollingUpdate` requires also adding/removing the `rollingUpdate:` block
-consistently.
-
----
-
-## 04. Commands and Arguments in Docker
-
-- To run a docker container:
-  ```
-  $ docker run ubuntu
-  ```
-- To list running containers:
-  ```
-  $ docker ps
-  ```
-- To list **all** containers, including stopped ones:
-  ```
-  $ docker ps -a
-  ```
-- **Inferred context (image `dc.PNG`):** likely shows sample `docker ps` vs `docker ps -a`
-  output side by side — `docker ps` shows only containers with `STATUS: Up ...`, while
-  `docker ps -a` additionally lists containers with `STATUS: Exited (0) ...`, illustrating
-  that a plain `docker run ubuntu` container **exits immediately** because Ubuntu's default
-  image has no long-running foreground process — this sets up the whole topic.
-
-#### Unlike virtual machines, containers are not meant to host an operating system
-
-- Containers are meant to run a **specific task or process**, such as hosting an instance
-  of a webserver, application server, or database server, etc.
-- **Inferred context (image `ex.PNG`):** likely shows a short list of example images and
-  the single process each one runs as its main/PID-1 process (e.g. `nginx` → runs the
-  nginx web server process; `mysql` → runs the mysqld process) — reinforcing that a
-  container's lifecycle is tied to that one foreground process: when it exits, the
-  container exits.
-
-#### How do you specify a different command to start the container?
-
-- One option: append a command to the `docker run` command — this **overrides** the
-  default command specified within the image:
-  ```
-  $ docker run ubuntu sleep 5
-  ```
-- This way, when the container starts it runs the `sleep` program, waits 5 seconds, and
-  then exits. How do you make that change **permanent**?
-  - **Inferred context (image `sleep.PNG`):** likely shows the Dockerfile `CMD`
-    instruction as the permanent equivalent of appending `sleep 5` at the command line —
-    e.g. `CMD sleep 5` baked into a custom image, so every `docker run <image>` (with no
-    extra args) behaves like the ad-hoc override did.
-- There are different ways of specifying the command: either as plain shell form, or in
-  JSON array format.
-  - **Inferred context (image `sleep1.PNG`):** likely contrasts:
-    - **Shell form:** `CMD sleep 5`
-    - **Exec/JSON array form:** `CMD ["sleep", "5"]`
-    - The array form is required when you also want to combine it with `ENTRYPOINT` (each
-      element becomes one argument, avoiding shell-parsing ambiguity).
-- Build the docker image:
-  ```
-  $ docker build -t ubuntu-sleeper .
-  ```
-- Run the docker container:
-  ```
-  $ docker run ubuntu-sleeper
-  ```
-  - **Inferred context (image `sleep2.PNG`):** likely demonstrates the finished
-    `ubuntu-sleeper` image using `ENTRYPOINT ["sleep"]` with `CMD ["5"]` as the default
-    parameter — so `docker run ubuntu-sleeper` sleeps 5 seconds by default, while
-    `docker run ubuntu-sleeper 10` overrides just the `CMD` portion (`10` replaces `5`)
-    and sleeps 10 seconds instead, without needing to touch the `ENTRYPOINT`.
-
-### Entrypoint Instruction
-
-- The **`ENTRYPOINT`** instruction is like the `CMD` instruction, in that you specify the
-  program that will run when the container starts — **and** whatever you specify on the
-  command line when running the container gets **appended** to (not replacing) the
-  `ENTRYPOINT` command as its parameters.
-- (General Docker knowledge, consistent with the source): to override `ENTRYPOINT` itself
-  at runtime you must use `docker run --entrypoint <new-command> <image>`.
-
-### K8s Reference Docs
-
-- https://docs.docker.com/engine/reference/builder/#cmd
-
----
-
-## 05. Commands and Arguments in Kubernetes
-
-- Anything that is appended to the `docker run` command goes into the **`args`** property
-  of the Pod definition file, in the form of an array.
-- The Pod `command` field corresponds to the **`ENTRYPOINT`** instruction in the
-  Dockerfile. So, to summarize, there are **2 fields** that correspond to **2
-  instructions** in the Dockerfile:
-
-  | Dockerfile instruction | Pod spec field |
-  |---|---|
-  | `ENTRYPOINT` | `command` |
-  | `CMD` | `args` |
-
-  ```yaml
-  apiVersion: v1
-  kind: Pod
-  metadata:
-    name: ubuntu-sleeper-pod
-  spec:
-   containers:
-   - name: ubuntu-sleeper
-     image: ubuntu-sleeper
-     command: ["sleep2.0"]
-     args: ["10"]
-  ```
-- **Inferred context (image `args.PNG`):** likely a mapping/precedence table reinforcing:
-  - Pod `command:` **overrides** the image's `ENTRYPOINT` entirely (not merged/appended).
-  - Pod `args:` **overrides** the image's `CMD` entirely.
-  - If `command` is set in the Pod but `args` is not, the image's default `CMD` is
-    discarded (not preserved) — you must explicitly re-specify `args` if you still want
-    parameters.
-  - **Exam-relevant:** command/args values in a Pod spec **must be YAML strings** — bare
-    numbers (e.g. `args: [10]`) are invalid; must be written as `args: ["10"]`.
-
-### K8s Reference Docs
-
-- https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/
-
----
-
-## 06. Practice Test — Commands and Arguments
-
-Step-by-step lab-guide walkthrough:
-
-1. **"Run `kubectl get pods` and count the number of pods."**
-   ```bash
-   kubectl get pods
-   ```
-   - Count entries in the output list.
-
-2. **"Run `kubectl describe pod` and look for command option."**
-   ```bash
-   kubectl describe pod <pod-name>
-   ```
-   - Read the `Command:` field under the container's section — shows the effective
-     entrypoint/command currently configured (or blank if the image's default is used).
-
-3. **"Set the command option to `['sleep', '5000']`."**
-   - Since a running Pod's `command` field is **immutable**, the standard pattern is:
-     ```bash
-     kubectl get pod <pod-name> -o yaml > pod.yaml
-     kubectl delete pod <pod-name>
-     # edit pod.yaml: spec.containers[].command: ["sleep", "5000"]
-     kubectl create -f pod.yaml
-     ```
-   - **Answer file:** `/var/answers/answer-ubuntu-sleeper-2.yaml`
-
-4. **"Both `sleep` and `1200` should be defined as a string."**
-   - Reinforces the YAML-typing trap: write `command: ["sleep", "1200"]` (both elements
-     quoted as strings), **not** `command: [sleep, 1200]` with a bare unquoted numeral,
-     which YAML would otherwise interpret as an integer and Kubernetes would reject/behave
-     unexpectedly for a `command`/`args` array (which expects strings).
-   - **Answer file:** `/var/answers/answer-ubuntu-sleeper-3.yaml`
-
-5. **Further variant of the same task.**
-   - **Answer file:** `/var/answers/answer-ubuntu-sleeper-3-2.yaml`
-
-6. **"Inspect the file `Dockerfile` given at `/root/webapp-color`. What command is run at
-   container startup?"**
-   ```bash
-   cat /root/webapp-color/Dockerfile
-   ```
-   - **Answer:** `python app.py` (the image's default `ENTRYPOINT`/`CMD`, with no
-     color argument, i.e. the app's built-in default color).
-
-7. **"Inspect the file `Dockerfile2` given at `/root/webapp-color`. What command is run at
-   container startup?"**
-   ```bash
-   cat /root/webapp-color/Dockerfile2
-   ```
-   - **Answer:** `python app.py --color red` (this Dockerfile bakes in `--color red` as a
-     default `CMD` argument to the `ENTRYPOINT`).
-
-8. **"The `command` (entrypoint) is overridden in the pod definition."**
-   - **Answer:** `--color green` — because the Pod spec's `command`/`args` fields take
-     precedence over anything baked into the Dockerfile, the Pod definition overrides the
-     Dockerfile2 default (`red`) and forces `green` instead.
-
-9. **"Inspect the two files under directory `webapp-color-3`. What command is run at
-   container startup?"**
-   ```bash
-   cat /root/webapp-color-3/Dockerfile
-   cat /root/webapp-color-3/pod-definition.yaml
-   ```
-   - **Answer:** `python app.py --color pink` — the Dockerfile sets `ENTRYPOINT
-     ["python", "app.py"]`, and the Pod's `args: ["--color", "pink"]` supplies the runtime
-     parameter, resulting in `python app.py --color pink`.
-
-10. **Final task — produce a Pod that starts the webapp with `--color green`.**
-    - **Answer file:** `/var/answers/answer-webapp-color-green.yaml`
-    - Pattern: set `command`/`args` in the Pod spec (or just `args` if the Dockerfile's
-      `ENTRYPOINT` is already `python app.py`) to `["--color", "green"]`.
-
-**Exam-relevant takeaway:** the whole lab is testing the same skill repeatedly — reading a
-Dockerfile's `ENTRYPOINT`/`CMD` to predict the *default* startup command, then reading/
-editing a Pod's `command`/`args` to know what actually happens once Kubernetes overrides
-it. Since `command`/`args` are immutable on a live Pod, always **get YAML → delete →
-edit → recreate**.
-
----
-
-## 07. Configure Environment Variables in Applications
-
-#### ENV variables in Docker
-
-```
-$ docker run -e APP_COLOR=pink simple-webapp-color
-```
-
-#### ENV variables in Kubernetes
-
-- To set an environment variable, set an **`env`** property in the Pod definition file:
-  ```yaml
-  apiVersion: v1
-  kind: Pod
-  metadata:
-    name: simple-webapp-color
-  spec:
-   containers:
-   - name: simple-webapp-color
-     image: simple-webapp-color
-     ports:
-     - containerPort: 8080
-     env:
-     - name: APP_COLOR
-       value: pink
-  ```
-- **Inferred context (image `env.PNG`):** likely shows the `env:` list format itself —
-  each entry is an object with `name:`/`value:` keys, and multiple env vars are simply
-  multiple list items under `env:`.
-- There are other ways of setting environment variables, such as **`ConfigMaps`** and
-  **`Secrets`**.
-  - **Inferred context (image `cms.PNG`):** likely a small diagram showing three ways to
-    populate a container's environment: (1) a **plain literal value** directly in the Pod
-    spec (as above), (2) a value sourced from a **ConfigMap** (for non-sensitive config),
-    and (3) a value sourced from a **Secret** (for sensitive data) — foreshadowing the
-    next two lectures.
-
-### K8s Reference Docs
-
-- https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/
-
----
-
-## 08. Configure ConfigMaps in Applications
-
-### ConfigMaps
-
-- There are **2 phases** involved in configuring ConfigMaps:
-  1. **First**, create the ConfigMap.
-  2. **Second**, inject it into the Pod.
-- There are **2 ways** of creating a ConfigMap:
-
-  **The Imperative way**
-  ```
-  $ kubectl create configmap app-config --from-literal=APP_COLOR=blue --from-literal=APP_MODE=prod
-  $ kubectl create configmap app-config --from-file=app_config.properties (Another way)
-  ```
-  - **Inferred context (image `cmi.PNG`):** likely contrasts `--from-literal` (inline
-    key=value pairs, good for a handful of simple values) against `--from-file` (reads an
-    entire properties/config file and turns each line into a key/value pair — good for
-    bulk config).
-
-  **The Declarative way**
+## 10. Secrets
+
+### Web-Mysql Application
+
+- **Inferred context (image `web.PNG`):** likely shows a simple two-tier architecture — a
+  web application Pod connecting to a MySQL database Pod/Service, with the web app reading
+  `DB_Host`, `DB_User`, `DB_Password` from its environment to make that connection.
+- One way is to move the app's properties/envs into a ConfigMap — **but** a ConfigMap
+  stores data in plain text. It is **definitely not** the right place to store a password:
   ```yaml
   apiVersion: v1
   kind: ConfigMap
   metadata:
    name: app-config
   data:
-   APP_COLOR: blue
-   APP_MODE: prod
+    DB_Host: mysql
+    DB_User: root
+    DB_Password: paswrd
   ```
-  ```
-  Create a config map definition file and run the 'kubectl create` command to deploy it.
-  $ kubectl create -f config-map.yaml
-  ```
-  - **Inferred context (image `cmd1.PNG`):** likely just visually reiterates this
-    YAML-file → `kubectl create -f` workflow, paralleling how Pods/Deployments are
-    created declaratively.
+  - **Inferred context (image `web1.PNG`):** likely highlights the `DB_Password: paswrd`
+    line specifically, visually flagging it as the problem — plain text credentials
+    sitting in a ConfigMap that anyone with `kubectl get configmap -o yaml` access can
+    read directly.
+- **Secrets** are used to store sensitive information. They are similar to ConfigMaps but
+  are stored in an **encrypted format or a hashed format** *(course's phrasing — see the
+  "Additional Notes" caveat below: in practice Secrets are only **base64-encoded**, not
+  encrypted, unless you separately enable encryption at rest)*.
 
-### View ConfigMaps
+#### There are 2 steps involved with secrets
 
-- To view ConfigMaps:
-  ```
-  $ kubectl get configmaps (or)
-  $ kubectl get cm
-  ```
-- To describe a ConfigMap:
-  ```
-  $ kubectl describe configmaps
-  ```
-- **Inferred context (image `cmv.PNG`):** likely shows sample `describe` output listing
-  the ConfigMap's `Data` section with each key and its plain-text value (e.g.
-  `APP_COLOR: blue`), demonstrating that ConfigMap data is stored/viewed as **plain
-  text**, unlike Secrets.
+- **First**, create a secret.
+- **Second**, inject the secret into a Pod.
+- **Inferred context (image `sec.PNG`):** likely a simple two-box flow diagram
+  (`Create Secret` → `Inject into Pod`), mirroring the ConfigMap two-phase workflow shown
+  earlier.
 
-### ConfigMap in Pods
+#### There are 2 ways of creating a secret
 
-- Inject a ConfigMap into a Pod via **`envFrom`**:
+**The Imperative way**
+```
+$ kubectl create secret generic app-secret --from-literal=DB_Host=mysql --from-literal=DB_User=root --from-literal=DB_Password=paswrd
+$ kubectl create secret generic app-secret --from-file=app_secret.properties
+```
+- **Inferred context (image `csi.PNG`):** likely contrasts `--from-literal` (inline values)
+  vs `--from-file` (read from a file), same pairing as the ConfigMap imperative options.
+
+**The Declarative way**
+- First, generate a base64-encoded hash value for each value, since Secret manifests store
+  data pre-encoded:
+  ```
+  $ echo -n "mysql" | base64
+  $ echo -n "root" | base64
+  $ echo -n "paswrd"| base64
+  ```
+- Then create a secret definition file and deploy it with `kubectl create`:
   ```yaml
   apiVersion: v1
-  kind: Pod
+  kind: Secret
   metadata:
-    name: simple-webapp-color
-  spec:
-   containers:
-   - name: simple-webapp-color
-     image: simple-webapp-color
-     ports:
-     - containerPort: 8080
-     envFrom:
-     - configMapRef:
-         name: app-config
-  ```
-  ```yaml
-  apiVersion: v1
-  kind: ConfigMap
-  metadata:
-    name: app-config
+   name: app-secret
   data:
-    APP_COLOR: blue
-    APP_MODE: prod
+    DB_Host: bX1zcWw=
+    DB_User: cm9vdA==
+    DB_Password: cGFzd3Jk
+  ```
+  ```
+  $ kubectl create -f secret-data.yaml
+  ```
+- **Inferred context (image `csd.PNG`):** likely visually links each `echo -n ... |
+  base64` output directly to the matching field in the YAML (`mysql` → `bX1zcWw=`, etc.),
+  reinforcing that Secret manifests require values already encoded before you write them.
+
+### Encode Secrets
+
+- **Inferred context (image `enc.PNG`):** likely a diagram showing the encode step in
+  isolation: `plaintext value` → `echo -n <value> | base64` → `base64 string` → pasted
+  into the Secret's `data:` field. Emphasizes `-n` (no trailing newline) is required or the
+  encoded value will be subtly wrong.
+
+### View Secrets
+
+- To view secrets (names only, values hidden):
+  ```
+  $ kubectl get secrets
+  ```
+- To describe a secret (still hides raw values, shows just key names and byte sizes):
+  ```
+  $ kubectl describe secret
+  ```
+- To view the actual (base64-encoded) values of the secret:
+  ```
+  $ kubectl get secret app-secret -o yaml
+  ```
+- **Inferred context (image `secv.PNG`):** likely shows sample output of `-o yaml`,
+  displaying the `data:` block with base64 strings for each key — contrasted against the
+  earlier `describe` output that only shows key names/sizes, not values.
+
+### Decode Secrets
+
+- To decode secret values back to plaintext:
+  ```
+  $ echo -n "bX1zcWw=" | base64 --decode
+  $ echo -n "cm9vdA==" | base64 --decode
+  $ echo -n "cGFzd3Jk" | base64 --decode
+  ```
+- **Inferred context (image `secd.PNG`):** likely the mirror-image diagram of the "Encode
+  Secrets" one — `base64 string` → `base64 --decode` → back to original plaintext,
+  emphasizing (as the course text does later) that **base64 is trivially reversible**, so
+  this is *encoding*, not real encryption/security.
+
+### Configuring secret with a pod
+
+- To inject a secret into a Pod, add a new property **`envFrom`** followed by
+  **`secretRef`** name, then create the Pod definition:
+  ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+   name: app-secret
+  data:
+    DB_Host: bX1zcWw=
+    DB_User: cm9vdA==
+    DB_Password: cGFzd3Jk
+  ```
+  ```yaml
+   apiVersion: v1
+   kind: Pod
+   metadata:
+     name: simple-webapp-color
+   spec:
+    containers:
+    - name: simple-webapp-color
+      image: simple-webapp-color
+      ports:
+      - containerPort: 8080
+      envFrom:
+      - secretRef:
+          name: app-secret
   ```
   ```
   $ kubectl create -f pod-definition.yaml
   ```
-- **Inferred context (image `cmp.PNG`):** likely shows the result — every key in the
-  ConfigMap's `data:` becomes an environment variable inside the container (here,
-  `APP_COLOR=blue` and `APP_MODE=prod` both appear in the container's environment),
-  confirming `envFrom` injects **all** keys at once.
+- **Inferred context (image `secp.PNG`):** likely shows the resulting container
+  environment with `DB_Host`, `DB_User`, `DB_Password` populated (Kubernetes
+  automatically base64-**decodes** values before injecting them as env vars — the app
+  itself never has to decode anything).
 
-#### There are other ways to inject configuration variables into a pod
+#### There are other ways to inject secrets into pods
 
-- You can inject it as a **`Single Environment Variable`** (pick one specific key out of
-  the ConfigMap rather than all of them, via `env[].valueFrom.configMapKeyRef`).
-- You can inject it as a file in a **`Volume`** (mount the whole ConfigMap as a
-  directory of files, one file per key).
-- **Inferred context (image `cmp1.PNG`):** likely a 3-way diagram comparing these three
-  injection styles side-by-side: (1) `envFrom.configMapRef` = inject every key as an env
-  var, (2) `env[].valueFrom.configMapKeyRef` = inject one specific key as one named env
-  var, (3) `volumes`/`volumeMounts` with a ConfigMap volume source = expose every key as
-  a file inside a mounted directory.
+- You can inject as a **`Single ENV variable`** (one specific key, via
+  `env[].valueFrom.secretKeyRef`).
+- You can inject the whole secret as **files in a Volume**.
+- **Inferred context (image `seco.PNG`):** likely a 3-way diagram identical in structure
+  to the ConfigMap one (`cmp1.PNG`) but for Secrets: `envFrom.secretRef` (all keys),
+  `env[].valueFrom.secretKeyRef` (one key), and a Secret-backed Volume mount (files).
+
+### Secrets in pods as volume
+
+- Each attribute in the secret is created as a **file**, with the value of the secret as
+  its content.
+- **Inferred context (image `secpv.PNG`):** likely shows a mounted directory (e.g.
+  `/opt/app-secret-volume/`) containing one file per Secret key (`DB_Host`, `DB_User`,
+  `DB_Password`), where `cat`-ing any of those files prints the **already-decoded**
+  plaintext value — this is the classic pattern apps use to read credentials from disk
+  instead of environment variables (env vars can leak via `/proc`, logs, `docker inspect`,
+  etc., which volumes mitigate somewhat).
+
+### Additional Notes: A Note on Secrets
+
+- Secrets encode data in **base64** format. **Anyone with the base64-encoded secret can
+  easily decode it.** As such, secrets can be considered **not very safe** by themselves.
+- The concept of "safety" of Secrets is a bit confusing in Kubernetes. The
+  [kubernetes documentation](https://kubernetes.io/docs/concepts/configuration/secret)
+  page and many blogs refer to Secrets as a "safer option" for storing sensitive data —
+  but it is not the Secret object *itself* that is safe, it is the **practices** around it.
+- Secrets are **not encrypted**, so they are not inherently safer in that strict sense.
+  However, best practices around using them make them safer, such as:
+  - Not checking in secret object definition files to source code repositories.
+  - [Enabling Encryption at Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/)
+    for Secrets so they are stored encrypted in etcd.
+- Also, the way Kubernetes handles secrets provides some protection:
+  - A secret is only sent to a node if a Pod on that node requires it.
+  - Kubelet stores the secret in a **tmpfs** filesystem, so the secret is not written to
+    disk storage.
+  - Once the Pod that depends on the secret is deleted, kubelet deletes its local copy of
+    the secret data as well.
+- Read about [protections](https://kubernetes.io/docs/concepts/configuration/secret/#protections)
+  and [risks](https://kubernetes.io/docs/concepts/configuration/secret/#risks) of using
+  secrets in the official docs.
+- There are better ways of handling sensitive data like passwords in Kubernetes, e.g.
+  Helm Secrets, [HashiCorp Vault](https://www.vaultproject.io/).
 
 ### K8s Reference Docs
 
-- https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
-- https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#define-container-environment-variables-using-configmap-data
-- https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/#create-configmaps-from-files
+- https://kubernetes.io/docs/concepts/configuration/secret/
+- https://kubernetes.io/docs/concepts/configuration/secret/#use-cases
+- https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/
 
 ---
 
-## 09. Practice Test — Environment Variables
+## 11. Practice Test — Secrets
 
 Step-by-step lab-guide walkthrough:
 
-1. **"Run `kubectl get pods` and count the number of pods."**
+1. **"Run `kubectl get secrets` and count the number of [secrets]."**
+   ```bash
+   kubectl get secrets
+   ```
+
+2. **"Run `kubectl get secrets` and look at the DATA field."**
+   ```bash
+   kubectl get secrets
+   ```
+   - The `DATA` column shows the **count** of keys inside each secret (not their values).
+
+3. **"Run `kubectl describe secret`."** (asked twice, likely for different secrets)
+   ```bash
+   kubectl describe secret <secret-name>
+   ```
+   - Shows key names and byte sizes only — values remain hidden even in `describe`.
+
+4. **"We have already deployed the required pods and services. Check out the pods and
+   services created. Check out the web application using the 'Webapp MySQL' link."**
    ```bash
    kubectl get pods
+   kubectl get services
    ```
+   - Visit the linked web app to observe its current state (likely failing to connect to
+     the DB, since no secret is wired in yet).
 
-2. **"Run `kubectl describe pod` and look for ENV option."** (asked twice, for different
-   Pods/values)
+5. **"Run command `kubectl create secret generic db-secret --from-literal=DB_Host=sql01
+   --from-literal=DBUser=root --from-literal=DB_Password=password123`."**
+   - **Corrected command** (note the key name typo `DBUser` in the prompt vs. the correct
+     `DB_User` actually used in the solution):
    ```bash
-   kubectl describe pod <pod-name>
+   kubectl create secret generic db-secret --from-literal=DB_Host=sql01 --from-literal=DB_User=root --from-literal=DB_Password=password123
    ```
-   - Read the `Environment:` section of the container's description to see currently
-     configured env vars and their values.
 
-3. **"View the web application UI by clicking on the 'Webapp Color' Tab above your
-   terminal."**
-   - Confirms visually which color the app currently renders (should match the env var
-     inspected above).
-
-4. **"Set the environment option to `APP_COLOR` = green."**
-   - Since env vars are immutable on a running Pod, use the standard get-delete-edit-
-     recreate pattern:
+6. **"Check Answer at `/var/answers/answer-webapp.yaml`."**
    ```bash
-   kubectl get pods webapp-color -o yaml > green.yaml
-   kubectl delete pods webapp-color
-   # Update APP_COLOR to green inside green.yaml
-   kubectl create -f green.yaml
+   kubectl get pod webapp-pod -o yaml > web.yaml
+   kubectl delete pod webapp-pod
    ```
-
-5. **"View the changes to the web application UI."**
-   - Reload the Webapp Color tab — should now render green.
-
-6. **"Run `kubectl get configmaps`."**
-   ```bash
-   kubectl get configmaps
-   ```
-
-7. **"Run `kubectl describe configmaps` and look for `DB_HOST` option."**
-   ```bash
-   kubectl describe configmaps
-   ```
-   - Read the `Data` section to find the `DB_HOST` key's value.
-
-8. **"Create a new ConfigMap for the `webapp-color` POD."**
-   ```bash
-   kubectl create configmap webapp-config-map --from-literal=APP_COLOR=darkblue
-   ```
-
-9. **"Set the environment option to `envFrom` and use `configMapRef`
-   `webapp-config-map`."**
-   ```bash
-   kubectl get pods webapp-color -o yaml > new-webapp.yaml
-   kubectl delete pods webapp-color
-   ```
-   - Update the Pod definition file — under `spec.containers[]`, add:
+   - Update `web.yaml` to add the secret injection under the container spec:
      ```yaml
      envFrom:
-     - configMapRef:
-         name: webapp-config-map
+     - secretRef:
+         name: db-secret
      ```
    ```bash
-   kubectl create -f new-webapp.yaml
+   kubectl create -f web.yaml
    ```
 
-10. **"View the changes to the web application UI."**
-    - Confirms the app now renders using the ConfigMap-sourced color (`darkblue`) instead
-      of a hardcoded literal env var.
+7. **"View the web application to verify it can successfully connect to the database."**
+   - Reload the Webapp MySQL link — it should now successfully connect using the
+     credentials injected from `db-secret`.
 
-**Exam-relevant takeaway:** the lab reinforces the get→delete→edit→recreate cycle for
-immutable Pod fields, and the two-step ConfigMap workflow (create the ConfigMap first,
-then wire it into the Pod via `envFrom.configMapRef`).
+**Exam-relevant takeaway:** identical create-secret → get/delete/edit/create-pod →
+`envFrom.secretRef` pattern as ConfigMaps, just swapping `configMapRef` for `secretRef` and
+`kubectl create configmap` for `kubectl create secret generic`.
 
 ---
 
-*Continued in [kubernetes-application-lifecycle-management-notes_part_02.md](kubernetes-application-lifecycle-management-notes_part_02.md)
-— Sections 10–18 (Secrets, Multi-Container Pods, Init Containers, Self-Healing
-Applications, Presentation Deck) plus the Quick Revision Checklist.*
+## 12. Multi-Container Pods
+
+### Monolith and Microservices
+
+- **Inferred context (image `loga.PNG`):** likely contrasts two architecture styles —
+  **Monolithic** (a single large application process handling everything: web serving,
+  business logic, logging, etc. in one codebase/container) vs. **Microservices**
+  (functionality decomposed into small, independently deployable services, e.g. a web app
+  service plus a separate logging/agent service) — this is the motivating context for why
+  Kubernetes supports multiple containers cooperating tightly within one Pod.
+
+#### Multi-Container Pods
+
+- **Inferred context (image `mcp.PNG`):** likely shows the defining trait of a
+  multi-container Pod: all containers in the same Pod share the same **network namespace**
+  (same IP, can reach each other via `localhost`) and can share **storage volumes**,
+  making them ideal for tightly-coupled helper processes (e.g. a log-shipping sidecar
+  reading files written by the main app container via a shared volume).
+- To create a new multi-container pod, add the new container's information to the Pod
+  definition file:
+  ```yaml
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: simple-webapp
+    labels:
+      name: simple-webapp
+  spec:
+    containers:
+    - name: simple-webapp
+      image: simple-webapp
+      ports:
+      - ContainerPort: 8080
+    - name: log-agent
+      image: log-agent
+  ```
+- **Inferred context (image `mcpc.PNG`):** likely shows the resulting
+  `kubectl describe pod` / `kubectl get pod` output reporting **`READY: 2/2`**, listing
+  both `simple-webapp` and `log-agent` as separate container entries under the same single
+  Pod, each with its own `State`/`Ready` status, but sharing one Pod IP.
+
+### K8s Reference Docs
+
+- https://kubernetes.io/docs/tasks/access-application-cluster/communicate-containers-same-pod-shared-volume/
+
+---
+
+## 13. Practice Test — Multi-Container Pods
+
+Step-by-step lab-guide walkthrough:
+
+1. **"Identify the number of containers running in the 'red' pod."**
+   ```bash
+   kubectl get pod red
+   ```
+   - Read the `READY` column (e.g. `2/2` means 2 containers, both ready).
+
+2. **"Identify the name of the containers running in the 'blue' pod."**
+   ```bash
+   kubectl describe pod blue
+   ```
+   - Read each `Containers:` sub-block's name.
+
+3. **"[Create a pod matching the given spec.]"**
+   ```bash
+   kubectl create -f /var/answers/answer-yellow.yaml
+   ```
+   - **Answer file:** `/var/answers/answer-yellow.yaml`
+
+4. **"We have deployed an application logging stack in the `elastic-stack` namespace.
+   Inspect it."**
+   ```bash
+   kubectl get pods -n elastic-stack
+   ```
+
+5. **"Inspect the Kibana UI. There shouldn't be any logs for now."**
+   - Visit the linked Kibana UI — expected to show **no data yet**, because the app Pod
+     in this namespace has no logging sidecar shipping data to Elasticsearch yet.
+
+6. **"Run `kubectl describe pod -n elastic-stack`."**
+   ```bash
+   kubectl describe pod -n elastic-stack
+   ```
+   - Inspect the Pod's container list — likely shows only a single `app` container so far
+     (no sidecar), explaining why Kibana is empty.
+
+7. **"Run `kubectl -n elastic-stack exec -it app cat /log/app.log`."**
+   ```bash
+   kubectl -n elastic-stack exec -it app cat /log/app.log
+   ```
+   - Confirms the app container **is** writing logs to `/log/app.log` locally — the
+     problem is nothing is shipping that file's contents to Elasticsearch, motivating the
+     need for a log-shipping sidecar container.
+
+8. **"[Add a logging sidecar container to the app pod.]"**
+   - **Answer file:** `/var/answers/answer-app.yaml`
+   - Pattern: add a second container (e.g. filebeat/log-agent) to the Pod spec that
+     mounts the **same volume** as the `app` container (so it can read `/log/app.log`)
+     and forwards its contents to Elasticsearch/Logstash.
+
+9. **"Inspect the Kibana UI. You should now see logs appearing in the 'Discover'
+   section."**
+   - After the sidecar is deployed and a moment for indexing, logs should appear. You
+     might need to create an **index pattern** in Kibana first to browse them (linked
+     video: https://bit.ly/2EXYdHf).
+
+**Exam-relevant takeaway:** this lab is a live demonstration of the **sidecar pattern**
+(covered conceptually in the next file) — a helper container added to an existing Pod,
+sharing a volume with the main container, to ship logs out without modifying the main
+application at all.
+
+---
+
+## 14. Multi-Container Pods Design Patterns
+
+- This file consists of a link to the KodeKloud "Design Patterns" page and a single
+  diagram image (`dp.PNG`) — no inline text. The following expands the three canonical
+  multi-container Pod design patterns, referenced by the accompanying K8s blog link
+  ("The Distributed System Toolkit: Patterns for Composite Containers").
+- **Inferred context (image `dp.PNG`) — the three patterns it almost certainly depicts:**
+
+  - **Sidecar pattern**
+    - A helper container running **alongside** the main application container in the same
+      Pod, extending/enhancing its functionality without modifying the main container's
+      code.
+    - Shares the Pod's network (`localhost`) and/or a mounted volume with the main
+      container.
+    - Classic example: the `log-agent` container from Section 12/13 — the main app writes
+      logs to a shared volume, and the sidecar container ships those logs to a central
+      logging backend (Elasticsearch/Logstash/Fluentd).
+    - Other common sidecar uses: file/data sync containers, sync-and-push-to-git helpers.
+
+  - **Adapter pattern**
+    - A helper container that **standardizes/transforms** the main container's output
+      into a common format expected by the outside world.
+    - Example: several microservices might each emit monitoring data in a different,
+      app-specific format; an adapter container sitting alongside each one transforms that
+      output into a uniform format (e.g. Prometheus-compatible metrics) before it leaves
+      the Pod, so the central monitoring system only needs to understand one format.
+
+  - **Ambassador pattern**
+    - A helper/proxy container that handles/simplifies **network communication** between
+      the main container and the outside world (e.g. sharded/clustered external services,
+      or different environments like dev/test/prod databases).
+    - The main container always talks to `localhost:<port>`, and the ambassador container
+      proxies that connection out to the real, possibly complex or environment-specific
+      destination — so the main app never needs logic to know which actual backend/shard/
+      environment it's really talking to.
+
+- **Common thread across all three:** the pattern works because containers in the same
+  Pod always share the same network namespace and (optionally) storage volumes — this is
+  precisely the multi-container Pod mechanism introduced in Section 12.
+
+### K8s Reference Docs
+
+- https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/
+
+---
+
+## 15. Init Containers
+
+- In a multi-container Pod, each container is expected to run a process that stays alive
+  as long as the Pod's lifecycle. For example, in the web-app + logging-agent multi-
+  container Pod discussed earlier, both containers are expected to stay alive at all
+  times — the log agent's process is expected to stay alive as long as the web application
+  is running. If either one fails, **the Pod restarts**.
+- But sometimes you want to run a process that runs **to completion** in a container. For
+  example:
+  - A process that pulls code/binaries from a repository, to be used later by the main
+    web application — a task that should run **only once**, when the Pod is first created.
+  - A process that waits for an external service or database to be up **before** the
+    actual application starts.
+  - That's where **`initContainers`** come in.
+- An init container is configured in a Pod like all other containers, except it is
+  specified inside an **`initContainers`** section:
+  ```yaml
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: myapp-pod
+    labels:
+      app: myapp
+  spec:
+    containers:
+    - name: myapp-container
+      image: busybox:1.28
+      command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+    initContainers:
+    - name: init-myservice
+      image: busybox
+      command: ['sh', '-c', 'git clone <some-repository-that-will-be-used-by-application> ;']
+  ```
+- When a Pod is first created, the init container **runs first**, and the process inside
+  it **must run to completion** before the real container hosting the application starts.
+- You can configure **multiple** init containers, exactly like multi-container Pods. In
+  that case, each init container runs **one at a time, in sequential order**.
+- If any init container **fails to complete**, Kubernetes **restarts the Pod repeatedly**
+  until the Init Container succeeds.
+  ```yaml
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: myapp-pod
+    labels:
+      app: myapp
+  spec:
+    containers:
+    - name: myapp-container
+      image: busybox:1.28
+      command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+    initContainers:
+    - name: init-myservice
+      image: busybox:1.28
+      command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+    - name: init-mydb
+      image: busybox:1.28
+      command: ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
+  ```
+  - `init-myservice` waits until DNS resolution of `myservice` succeeds, then
+    `init-mydb` waits until DNS resolution of `mydb` succeeds — **only after both
+    complete**, in that order, does `myapp-container` start.
+
+### K8s Reference Docs
+
+- https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+- https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-initialization/
+
+---
+
+## 16. Practice Test — Init Containers
+
+Step-by-step lab-guide walkthrough:
+
+1. **"Identify the pod that has an initContainer configured."**
+   ```bash
+   kubectl get pods
+   kubectl describe pods
+   ```
+   - Scan each Pod's `describe` output for an `Init Containers:` section — only Pods
+     with one present have init containers configured.
+
+2. **"What is the image used by the initContainer on the blue pod?"**
+   ```bash
+   kubectl describe pods blue
+   ```
+   - Read the `Init Containers > <name> > Image:` field.
+
+3. **"Run `kubectl describe pod blue` and check the state field of the initContainer."**
+   ```bash
+   kubectl describe pod blue
+   ```
+   - Read `Init Containers > <name> > State:` — will show e.g. `Running`, `Waiting`, or
+     `Terminated`.
+
+4. **"Check the reason field of the initContainer."**
+   ```bash
+   kubectl describe pod blue
+   ```
+   - Read the `Reason:` sub-field under the init container's state — e.g.
+     `PodInitializing` while an init container is still executing, or a failure reason
+     such as `Error`/`CrashLoopBackOff` if it's failing.
+
+5. **"Run `kubectl describe pod purple`."**
+   ```bash
+   kubectl describe pod purple
+   ```
+   - General inspection of a Pod with **multiple** init containers configured.
+
+6. **"Run the `kubectl describe pod purple` command and look at the container state."**
+   ```bash
+   kubectl describe pod purple
+   ```
+   - The main application container's state will show `Waiting` with reason
+     `PodInitializing` for as long as any init container hasn't yet completed — this is
+     the direct, observable proof that init containers block the main container's start.
+
+7. **"Check the commands used in the initContainers. The first one sleeps for 600
+   seconds (10 minutes) and the second one sleeps for 1200 seconds (20 minutes)."**
+   ```bash
+   kubectl describe pod purple
+   ```
+   - Read each init container's `Command:` field to confirm the sleep durations —
+     illustrates the **sequential** execution model: the second init container (20 min
+     sleep) doesn't even start until the first (10 min sleep) finishes, so the main
+     container won't start for **30 minutes total**.
+
+8. **"Update the pod red to use an initContainer that uses the busybox image and sleeps
+   for 20 seconds."**
+   ```bash
+   kubectl get pod red -o yaml > red.yaml
+   kubectl delete pod red
+   ```
+   - Edit `red.yaml` to add:
+     ```yaml
+     initContainers:
+     - name: init-red
+       image: busybox
+       command: ['sh', '-c', 'sleep 20']
+     ```
+   ```bash
+   kubectl create -f red.yaml
+   ```
+
+9. **"Check the command used by the initContainer. Looks like there is a typo in sleep
+   command. Fix it — it should be `sleep 2` not `sleeeep 2`."**
+   ```bash
+   kubectl describe pod orange
+   kubectl get pod orange -o yaml > orange.yaml
+   kubectl delete pod orange
+   ```
+   - Fix the typo in `orange.yaml`'s init container command (`sleeeep` → `sleep`), then:
+   ```bash
+   kubectl create -f orange.yaml
+   ```
+   - **Why this matters:** an invalid/misspelled command inside an init container causes
+     it to error out and Kubernetes to **restart the Pod repeatedly**, leaving the main
+     application container permanently stuck `Waiting`/`PodInitializing` until the typo is
+     fixed — a very common real-world debugging scenario for init containers.
+
+**Exam-relevant takeaway:** `kubectl describe pod <name>` is again the one command that
+answers everything about init containers — image, state, reason, and exact command — and
+init containers, like `command`/`args`, require the delete-edit-recreate cycle to fix.
+
+---
+
+## 17. Self-Healing Applications
+
+- Kubernetes supports **self-healing applications** through **ReplicaSets** and
+  **Replication Controllers**.
+- The replication controller helps ensure that a Pod is **re-created automatically** when
+  the application within the Pod **crashes**. It helps ensure enough replicas of the
+  application are running **at all times**.
+- Kubernetes provides additional support to check the **health** of applications running
+  within Pods, and take necessary actions, through **Liveness and Readiness Probes**.
+  However, these are **not required for the CKA exam** and, as such, are **not covered
+  here** — these are topics for the **Certified Kubernetes Application Developer (CKAD)**
+  exam and are covered in the CKAD course.
+- **Supplementary/general context (not explicit in this short lecture, but standard
+  companion knowledge for "self-healing" and commonly tested alongside this topic):** Pod
+  self-healing also depends on the Pod's `spec.restartPolicy`, which governs whether the
+  **kubelet** restarts containers in that Pod on exit:
+  - `Always` (default) — always restart the container on exit, regardless of exit code.
+  - `OnFailure` — restart only if the container exits with a non-zero (failure) exit code.
+  - `Never` — never restart the container automatically.
+  - This is a Pod-level field distinct from the ReplicaSet/Deployment-level self-healing
+    described above (which recreates a whole *missing* Pod); `restartPolicy` governs
+    restarting a *container* within an existing Pod.
+
+---
+
+## 18. Download Presentation Deck
+
+- The section provides a downloadable slide deck accompanying the video lectures:
+  [Presentation Deck](https://kodekloud.com/topic/download-presentation-deck-4/).
+- Purely a resource/reference link — no technical content of its own.
+
+---
+
+## Quick Revision Checklist
+
+- [ ] **Rolling Updates & Rollback**
+  - Deployment strategies: `Recreate` (all old Pods down, then all new Pods up — causes
+    downtime) vs `RollingUpdate` (default; incremental replace — no downtime).
+  - `kubectl rollout status deployment/<name>` / `kubectl rollout history
+    deployment/<name>` / `kubectl rollout undo deployment/<name>`.
+  - `kubectl apply -f <file>` (declarative update) vs `kubectl set image
+    deployment/<name> <container>=<image>` (imperative shortcut) both trigger a new
+    revision/rollout.
+  - Each rollout creates a **new ReplicaSet**; old ReplicaSets are kept (scaled to 0) for
+    rollback/history.
+  - `RollingUpdateStrategy` has `maxUnavailable` / `maxSurge` — these fields only make
+    sense under `strategy.type: RollingUpdate`; must be **removed** if you switch
+    `strategy.type` to `Recreate`.
+
+- [ ] **Command vs Args vs Entrypoint precedence**
+  - Docker `ENTRYPOINT` = executable → maps to Pod `command:`.
+  - Docker `CMD` = default parameters → maps to Pod `args:`.
+  - Pod `command`/`args`, when set, **fully override** (not merge with) the image's
+    `ENTRYPOINT`/`CMD`.
+  - `command`/`args` array elements must be **strings** (quote numbers, e.g. `"5000"`).
+  - Appending extra words to `docker run <image> <words>` overrides just the image's
+    `CMD`, not its `ENTRYPOINT`; use `docker run --entrypoint` to override the entrypoint
+    itself.
+  - `command`/`args` are **immutable** on a running Pod — get YAML → delete Pod → edit →
+    recreate.
+
+- [ ] **Environment Variables**
+  - Plain literal: `env: [{name: X, value: Y}]`.
+  - From ConfigMap: `envFrom: [{configMapRef: {name: ...}}]` (all keys) or
+    `env[].valueFrom.configMapKeyRef` (one key).
+  - From Secret: `envFrom: [{secretRef: {name: ...}}]` (all keys) or
+    `env[].valueFrom.secretKeyRef` (one key).
+
+- [ ] **ConfigMaps**
+  - Imperative: `kubectl create configmap <name> --from-literal=K=V` or
+    `--from-file=<file>`.
+  - Declarative: `ConfigMap` manifest with `data:` map + `kubectl create -f`.
+  - Injection options: `envFrom.configMapRef` (all), `env[].valueFrom.configMapKeyRef`
+    (one), or **Volume** (each key becomes a file).
+  - `kubectl get configmaps`/`kubectl get cm`, `kubectl describe configmaps`.
+
+- [ ] **Secrets & Encoding**
+  - Imperative: `kubectl create secret generic <name> --from-literal=K=V` or
+    `--from-file=<file>`.
+  - Declarative: values must be pre-**base64-encoded** (`echo -n "value" | base64`,
+    the `-n` matters) in the `data:` field.
+  - Decode: `echo -n "<b64>" | base64 --decode`.
+  - Injection identical shape to ConfigMaps: `envFrom.secretRef`,
+    `env[].valueFrom.secretKeyRef`, or Volume (each key → decoded-content file).
+  - **Secrets are base64-encoded, NOT encrypted** — trivially reversible; true security
+    requires Encryption at Rest for etcd + access-control best practices, not the Secret
+    object alone.
+  - Kubelet stores Secret data in **tmpfs** (not written to disk) and deletes it when the
+    dependent Pod is deleted; a Secret is only ever sent to nodes that actually need it.
+
+- [ ] **Multi-Container Pod Design Patterns**
+  - Containers in the same Pod share the same **network namespace** (localhost) and can
+    share **Volumes**.
+  - **Sidecar** — helper container extends the main container (e.g. log shipper reading a
+    shared volume).
+  - **Adapter** — helper container standardizes/transforms the main container's output
+    into a common format.
+  - **Ambassador** — helper/proxy container simplifies the main container's outbound
+    network calls to potentially complex/sharded/environment-specific external services.
+  - Multi-container Pod `READY` column reads `N/N` for N containers; use
+    `kubectl logs <pod> <container>` and `kubectl exec <pod> -c <container> ...` once
+    there's more than one container.
+
+- [ ] **Init Containers**
+  - Declared under `initContainers:`, separate from `containers:`.
+  - Must **run to completion** before any regular container in the Pod starts.
+  - Multiple init containers run **sequentially, one at a time**, in the order listed.
+  - If an init container fails, Kubernetes **restarts the whole Pod repeatedly** until it
+    succeeds — main container stays `Waiting` with reason `PodInitializing` the whole time.
+  - `kubectl describe pod <name>` shows `Init Containers:` section with per-container
+    `Image`, `State`, `Reason`, and `Command` — the primary diagnostic command for this
+    topic.
+
+- [ ] **Restart Policies / Self-Healing**
+  - **ReplicaSets/Replication Controllers** provide Pod-level self-healing — automatically
+    recreate a Pod if it's deleted/crashes, and maintain the desired replica count.
+  - **Liveness/Readiness Probes** exist for finer-grained health checking but are
+    explicitly **out of scope for the CKA exam** (CKAD topic).
+  - `spec.restartPolicy` (`Always` default / `OnFailure` / `Never`) governs container-level
+    restart behavior within a Pod (general Kubernetes knowledge that complements this
+    topic, though not spelled out in the source lecture itself).
+
+---
+
+*End of Application Lifecycle Management notes.*
