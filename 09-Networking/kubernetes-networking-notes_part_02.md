@@ -1,6 +1,6 @@
-# Networking — Complete Notes (Part 2 of 4)
+# Networking — Complete Notes (Part 2 of 5)
 
-> **Part 2 of 4** — covers Sections 08–14 (Cluster Networking, Practice Test — Explore
+> **Part 2 of 5** — covers Sections 08–14 (Cluster Networking, Practice Test — Explore
 > Env, Pod Networking, CNI in Kubernetes, CNI Weave, Practice Test — CNI Weave, Practice
 > Test — Deploy Network Solution).
 > Previous: [kubernetes-networking-notes_part_01.md](kubernetes-networking-notes_part_01.md)
