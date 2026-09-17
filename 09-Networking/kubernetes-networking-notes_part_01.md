@@ -1,6 +1,6 @@
-# Networking — Complete Notes (Part 1 of 4)
+# Networking — Complete Notes (Part 1 of 5)
 
-> **Part 1 of 4** — covers Sections 01–07 (Section Introduction, Pre-requisite Switching/
+> **Part 1 of 5** — covers Sections 01–07 (Section Introduction, Pre-requisite Switching/
 > Routing/Gateways, Pre-requisite DNS, Pre-requisite CoreDNS, Pre-requisite Network
 > Namespace, Pre-requisite Docker Networking, Pre-requisite CNI).
 > Next: [kubernetes-networking-notes_part_02.md](kubernetes-networking-notes_part_02.md)
