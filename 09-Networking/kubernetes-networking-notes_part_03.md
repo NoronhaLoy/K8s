@@ -1,12 +1,12 @@
-# Networking — Complete Notes (Part 3 of 4)
+# Networking — Complete Notes (Part 3 of 5)
 
-> **Part 3 of 4** — covers Sections 15–21 (IPAM Weave, Practice Test — Networking Weave,
+> **Part 3 of 5** — covers Sections 15–21 (IPAM Weave, Practice Test — Networking Weave,
 > Service Networking, Practice Test — Service Networking, DNS in Kubernetes, CoreDNS in
 > Kubernetes, Practice Test — CoreDNS in Kubernetes).
 > Previous: [kubernetes-networking-notes_part_02.md](kubernetes-networking-notes_part_02.md)
 > (Sections 08–14).
 > Next: [kubernetes-networking-notes_part_04.md](kubernetes-networking-notes_part_04.md)
-> (Sections 22–26 + Quick Revision Checklist).
+> (Sections 22–24).
 >
 > Source: `~/tf/ep-data/certified-kubernetes-administrator-course/docs/09-Networking/`
 
